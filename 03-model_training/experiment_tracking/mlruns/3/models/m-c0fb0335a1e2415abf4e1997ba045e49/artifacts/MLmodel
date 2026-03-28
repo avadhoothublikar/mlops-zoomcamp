@@ -1,0 +1,22 @@
+artifact_path: file:///c:/Users/AvadhootHublikar/Documents/mlops/mlops-zoomcamp/03-model_training/experiment_tracking/mlruns/3/models/m-c0fb0335a1e2415abf4e1997ba045e49/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.12.1
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.core.Booster
+    model_format: ubj
+    xgb_version: 3.2.0
+mlflow_version: 3.10.1
+model_id: m-c0fb0335a1e2415abf4e1997ba045e49
+model_size_bytes: 1360469
+model_uuid: m-c0fb0335a1e2415abf4e1997ba045e49
+prompts: null
+run_id: c14b45b7e6354f12a8dbd3bc21eae61b
+utc_time_created: '2026-03-26 17:46:22.891326'
