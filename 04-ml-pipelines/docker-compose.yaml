@@ -1,0 +1,113 @@
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: 'BakpnyH8qT6GQusIeSHEjDn1w6d4lo65oTchkf7rHEM='
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    AIRFLOW__WEBSERVER__SECRET_KEY: '0b45a16d9a51e76fc7f18877bf74be9b615aa6deb869596785265710043692b1'
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    MLFLOW_TRACKING_INSECURE_TLS: "true"
+    MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR: "false"
+    AIRFLOW__CORE__ENABLE_XCOM_PICKLING: 'True'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    #- ./models:/opt/airflow/models
+    - ./logs:/opt/airflow/logs
+    #- ./mlruns:/opt/airflow/mlruns
+    - ./mlruns:/opt/mlflow/artifacts
+  depends_on:
+    - postgres
+    - mlflow
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mlops
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    depends_on:
+      - postgres
+    user: "0:0"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql+psycopg2://airflow:airflow@postgres/mlflow_new
+      --default-artifact-root file:///opt/mlflow/artifacts
+      --serve-artifacts
+    networks:
+      - mlops
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/opt/mlflow/artifacts
+
+  airflow-init:
+      <<: *airflow-common
+      entrypoint: /bin/bash
+      command: >
+        -c "airflow db init && 
+          airflow users create 
+            --username admin 
+            --password admin 
+            --firstname Admin 
+            --lastname User 
+            --role Admin 
+            --email admin@example.com" 
+      restart: "no"
+      networks:
+        - mlops
+
+  airflow-webserver:
+      <<: *airflow-common
+      command: airflow webserver
+      ports:
+        - "8080:8080"
+      healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+      restart: always
+      networks:
+        - mlops
+      depends_on:
+        - postgres
+    
+  airflow-scheduler:
+      <<: *airflow-common
+      command: airflow scheduler
+      restart: always
+      networks:
+        - mlops
+      depends_on:
+        - postgres
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:
+
+networks:
+  mlops:
+    driver: bridge
