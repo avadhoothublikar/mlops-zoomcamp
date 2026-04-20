@@ -1,0 +1,11 @@
+prefect
+tqdm
+requests
+pyarrow
+psycopg
+psycopg-binary
+evidently
+pandas
+numpy
+scikit-learn
+jupyter
